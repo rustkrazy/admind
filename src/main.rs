@@ -134,7 +134,7 @@ async fn start() -> Result<()> {
     Ok(HttpServer::new(|| {
         let auth = HttpAuthentication::basic(basic_auth_validator);
         App::new()
-            .app_data(web::PayloadConfig::default().limit(256 * MiB))
+            .app_data(web::PayloadConfig::default().limit(512 * MiB))
             .wrap(auth)
             .service(web::resource("/reboot").to(handle_reboot))
             .service(web::resource("/shutdown").to(handle_shutdown))
