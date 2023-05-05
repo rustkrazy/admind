@@ -25,6 +25,69 @@ async fn handle_reboot() -> HttpResponse {
     }
 }
 
+async fn handle_shutdown() -> HttpResponse {
+    match reboot(RebootMode::RB_POWER_OFF) {
+        Ok(_) => HttpResponse::Ok()
+            .content_type(ContentType::plaintext())
+            .body("shutting down..."),
+        Err(e) => HttpResponse::InternalServerError()
+            .content_type(ContentType::plaintext())
+            .body(format!("can't shut down: {}", e)),
+    }
+}
+
+#[actix_web::main]
+async fn main() -> io::Result<()> {
+    match start().await {
+        Ok(_) => {}
+        Err(e) => {
+            println!("[admind] start error: {}", e);
+            return Ok(());
+        }
+    }
+
+    Ok(())
+}
+
+async fn start() -> Result<()> {
+    let config = load_rustls_config()?;
+
+    println!("[admind] start https://[::]:8443");
+
+    Ok(HttpServer::new(|| {
+        let auth = HttpAuthentication::basic(basic_auth_validator);
+        App::new()
+            .wrap(auth)
+            .service(web::resource("/rustkrazy/reboot").to(handle_reboot))
+            .service(web::resource("/rustkrazy/shutdown").to(handle_shutdown))
+    })
+    .bind_rustls("[::]:8443", config)?
+    .run()
+    .await?)
+}
+
+fn load_rustls_config() -> Result<ServerConfig> {
+    let config = ServerConfig::builder()
+        .with_safe_defaults()
+        .with_no_client_auth();
+
+    let cert_file = &mut BufReader::new(File::open("/data/admind_cert.pem")?);
+    let key_file = &mut BufReader::new(File::open("/data/admind_key.pem")?);
+
+    let cert_chain = certs(cert_file)?.into_iter().map(Certificate).collect();
+
+    let mut keys: Vec<PrivateKey> = pkcs8_private_keys(key_file)?
+        .into_iter()
+        .map(PrivateKey)
+        .collect();
+
+    if keys.is_empty() {
+        return Err(Error::NoPrivateKeys);
+    }
+
+    Ok(config.with_single_cert(cert_chain, keys.remove(0))?)
+}
+
 async fn basic_auth_validator(
     req: ServiceRequest,
     credentials: BasicAuth,
@@ -57,55 +120,4 @@ fn validate_credentials(user_id: &str, user_password: &str) -> io::Result<bool> 
         io::ErrorKind::PermissionDenied,
         "Invalid credentials",
     ))
-}
-
-#[actix_web::main]
-async fn main() -> io::Result<()> {
-    match start().await {
-        Ok(_) => {}
-        Err(e) => {
-            println!("[admind] start error: {}", e);
-            return Ok(());
-        }
-    }
-
-    Ok(())
-}
-
-async fn start() -> Result<()> {
-    let config = load_rustls_config()?;
-
-    println!("[admind] start https://[::]:8443");
-
-    Ok(HttpServer::new(|| {
-        let auth = HttpAuthentication::basic(basic_auth_validator);
-        App::new()
-            .wrap(auth)
-            .service(web::resource("/rustkrazy/reboot").to(handle_reboot))
-    })
-    .bind_rustls("[::]:8443", config)?
-    .run()
-    .await?)
-}
-
-fn load_rustls_config() -> Result<ServerConfig> {
-    let config = ServerConfig::builder()
-        .with_safe_defaults()
-        .with_no_client_auth();
-
-    let cert_file = &mut BufReader::new(File::open("/data/admind_cert.pem")?);
-    let key_file = &mut BufReader::new(File::open("/data/admind_key.pem")?);
-
-    let cert_chain = certs(cert_file)?.into_iter().map(Certificate).collect();
-
-    let mut keys: Vec<PrivateKey> = pkcs8_private_keys(key_file)?
-        .into_iter()
-        .map(PrivateKey)
-        .collect();
-
-    if keys.is_empty() {
-        return Err(Error::NoPrivateKeys);
-    }
-
-    Ok(config.with_single_cert(cert_chain, keys.remove(0))?)
 }
