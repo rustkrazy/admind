@@ -14,6 +14,11 @@ use nix::sys::reboot::{reboot, RebootMode};
 use rustls::{Certificate, PrivateKey, ServerConfig};
 use rustls_pemfile::{certs, pkcs8_private_keys};
 
+#[allow(non_upper_case_globals)]
+const KiB: usize = 1024;
+#[allow(non_upper_case_globals)]
+const MiB: usize = 1024 * KiB;
+
 async fn handle_reboot() -> HttpResponse {
     match reboot(RebootMode::RB_AUTOBOOT) {
         Ok(_) => HttpResponse::Ok()
@@ -129,6 +134,7 @@ async fn start() -> Result<()> {
     Ok(HttpServer::new(|| {
         let auth = HttpAuthentication::basic(basic_auth_validator);
         App::new()
+            .app_data(web::PayloadConfig::default().limit(256 * MiB))
             .wrap(auth)
             .service(web::resource("/reboot").to(handle_reboot))
             .service(web::resource("/shutdown").to(handle_shutdown))
