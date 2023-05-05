@@ -1,6 +1,6 @@
 use rustkrazy_admind::{Error, Result};
 
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::{self, BufReader};
 
 use actix_web::{
@@ -9,6 +9,7 @@ use actix_web::{
 use actix_web_httpauth::extractors::basic::{BasicAuth, Config};
 use actix_web_httpauth::extractors::AuthenticationError;
 use actix_web_httpauth::middleware::HttpAuthentication;
+use constant_time_eq::constant_time_eq;
 use nix::sys::reboot::{reboot, RebootMode};
 use rustls::{Certificate, PrivateKey, ServerConfig};
 use rustls_pemfile::{certs, pkcs8_private_keys};
@@ -46,7 +47,9 @@ async fn basic_auth_validator(
 }
 
 fn validate_credentials(user_id: &str, user_password: &str) -> io::Result<bool> {
-    if user_id == "rustkrazy" && user_password == "rustkrazy" {
+    let correct_password = fs::read("/data/admind.passwd")?;
+
+    if user_id == "rustkrazy" && constant_time_eq(user_password.as_bytes(), &correct_password) {
         return Ok(true);
     }
 
