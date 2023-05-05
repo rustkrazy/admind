@@ -260,6 +260,8 @@ async fn stream_to(dst: &str, req: HttpRequest) -> Result<()> {
     let bytes = web::Bytes::extract(&req).await?;
     let mut file = File::create(dst)?;
 
+    println!("[admind] overwrite {} with {:?}", dst, &bytes);
+
     file.write_all(&bytes)?;
     file.sync_all()?;
 
