@@ -254,6 +254,8 @@ fn switch_to_inactive_root() -> Result<()> {
     let old = String::from("root=PARTUUID=00000000-0") + &old.chars().last().unwrap().to_string();
     let new = String::from("root=PARTUUID=00000000-0") + &new.chars().last().unwrap().to_string();
 
+    println!("[admind] rewrite cmdline {} -> {}", old, new);
+
     modify_cmdline(&old, &new)?;
     Ok(())
 }
