@@ -124,6 +124,8 @@ async fn handle_update_root(data: web::Bytes) -> HttpResponse {
 }
 
 async fn handle_switch() -> HttpResponse {
+    println!("[admind] switch to inactive root");
+
     match switch_to_inactive_root() {
         Ok(_) => HttpResponse::Ok()
             .content_type(ContentType::plaintext())
