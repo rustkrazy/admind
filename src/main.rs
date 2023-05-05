@@ -157,8 +157,10 @@ fn validate_credentials(user_id: &str, user_password: &str) -> io::Result<bool> 
 }
 
 fn modify_cmdline(old: &str, new: &str) -> Result<()> {
-    let cmdline = fs::read_to_string("/boot/cmdline.txt")?;
-    fs::write("/boot/cmdline.txt", cmdline.replace(old, new))?;
+    let boot = boot_dev()?;
+
+    let cmdline = fs::read_to_string(boot)?;
+    fs::write(boot, cmdline.replace(old, new))?;
 
     Ok(())
 }
@@ -253,8 +255,6 @@ fn switch_to_inactive_root() -> Result<()> {
 
     let old = String::from("root=PARTUUID=00000000-0") + &old.chars().last().unwrap().to_string();
     let new = String::from("root=PARTUUID=00000000-0") + &new.chars().last().unwrap().to_string();
-
-    println!("[admind] rewrite cmdline {} -> {}", old, new);
 
     modify_cmdline(&old, &new)?;
     Ok(())
