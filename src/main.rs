@@ -68,6 +68,46 @@ async fn handle_update_boot(data: web::Bytes) -> HttpResponse {
     }
 }
 
+async fn handle_update_mbr(data: web::Bytes) -> HttpResponse {
+    let mbr = match dev() {
+        Ok(v) => v,
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .content_type(ContentType::plaintext())
+                .body(format!("can't locate disk device: {}", e))
+        }
+    };
+
+    match stream_to(mbr, &data).await {
+        Ok(_) => HttpResponse::Ok()
+            .content_type(ContentType::plaintext())
+            .body("successfully updated mbr"),
+        Err(e) => HttpResponse::InternalServerError()
+            .content_type(ContentType::plaintext())
+            .body(format!("can't update mbr: {}", e)),
+    }
+}
+
+async fn handle_update_root(data: web::Bytes) -> HttpResponse {
+    let root = match inactive_root() {
+        Ok(v) => v,
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .content_type(ContentType::plaintext())
+                .body(format!("can't locate inactive root partition: {}", e))
+        }
+    };
+
+    match stream_to(&root, &data).await {
+        Ok(_) => HttpResponse::Ok()
+            .content_type(ContentType::plaintext())
+            .body("successfully updated inactive root partition"),
+        Err(e) => HttpResponse::InternalServerError()
+            .content_type(ContentType::plaintext())
+            .body(format!("can't update inactive root partition: {}", e)),
+    }
+}
+
 #[actix_web::main]
 async fn main() -> io::Result<()> {
     match start().await {
@@ -93,6 +133,8 @@ async fn start() -> Result<()> {
             .service(web::resource("/reboot").to(handle_reboot))
             .service(web::resource("/shutdown").to(handle_shutdown))
             .service(web::resource("/update/boot").to(handle_update_boot))
+            .service(web::resource("/update/mbr").to(handle_update_mbr))
+            .service(web::resource("/update/root").to(handle_update_root))
     })
     .bind_rustls("[::]:8443", config)?
     .run()
