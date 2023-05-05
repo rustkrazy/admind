@@ -80,7 +80,7 @@ async fn handle_update_boot(data: web::Bytes) -> HttpResponse {
 }
 
 async fn handle_update_mbr(data: web::Bytes) -> HttpResponse {
-    println!("[admind] update mbr: {:?}", &data);
+    println!("[admind] update mbr");
 
     let mbr = match dev() {
         Ok(v) => v,
