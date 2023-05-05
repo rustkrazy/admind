@@ -58,8 +58,8 @@ async fn start() -> Result<()> {
         let auth = HttpAuthentication::basic(basic_auth_validator);
         App::new()
             .wrap(auth)
-            .service(web::resource("/rustkrazy/reboot").to(handle_reboot))
-            .service(web::resource("/rustkrazy/shutdown").to(handle_shutdown))
+            .service(web::resource("/reboot").to(handle_reboot))
+            .service(web::resource("/shutdown").to(handle_shutdown))
     })
     .bind_rustls("[::]:8443", config)?
     .run()
