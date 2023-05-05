@@ -4,8 +4,7 @@ use std::fs::{self, File};
 use std::io::{self, BufReader, Write};
 
 use actix_web::{
-    dev::ServiceRequest, http::header::ContentType, web, App, FromRequest, HttpRequest,
-    HttpResponse, HttpServer,
+    dev::ServiceRequest, http::header::ContentType, web, App, HttpResponse, HttpServer,
 };
 use actix_web_httpauth::extractors::basic::{BasicAuth, Config};
 use actix_web_httpauth::extractors::AuthenticationError;
@@ -37,7 +36,7 @@ async fn handle_shutdown() -> HttpResponse {
     }
 }
 
-async fn handle_update_boot(req: HttpRequest) -> HttpResponse {
+async fn handle_update_boot(data: web::Bytes) -> HttpResponse {
     let boot = match boot_dev() {
         Ok(v) => v,
         Err(e) => {
@@ -47,7 +46,7 @@ async fn handle_update_boot(req: HttpRequest) -> HttpResponse {
         }
     };
 
-    match stream_to(boot, req).await {
+    match stream_to(boot, &data).await {
         Ok(_) => {}
         Err(e) => {
             return HttpResponse::InternalServerError()
@@ -256,13 +255,10 @@ fn inactive_root() -> Result<String> {
     Err(Error::RootdevUnset)
 }
 
-async fn stream_to(dst: &str, req: HttpRequest) -> Result<()> {
-    let bytes = web::Bytes::extract(&req).await?;
+async fn stream_to(dst: &str, data: &[u8]) -> Result<()> {
     let mut file = File::create(dst)?;
 
-    println!("[admind] overwrite {} with {:?}", dst, &bytes);
-
-    file.write_all(&bytes)?;
+    file.write_all(data)?;
     file.sync_all()?;
 
     Ok(())
