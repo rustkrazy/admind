@@ -123,6 +123,17 @@ async fn handle_update_root(data: web::Bytes) -> HttpResponse {
     }
 }
 
+async fn handle_switch() -> HttpResponse {
+    match switch_to_inactive_root() {
+        Ok(_) => HttpResponse::Ok()
+            .content_type(ContentType::plaintext())
+            .body("successfully switched to inactive root partition"),
+        Err(e) => HttpResponse::InternalServerError()
+            .content_type(ContentType::plaintext())
+            .body(format!("can't switch to inactive root partition: {}", e)),
+    }
+}
+
 #[actix_web::main]
 async fn main() -> io::Result<()> {
     match start().await {
@@ -151,6 +162,7 @@ async fn start() -> Result<()> {
             .service(web::resource("/update/boot").to(handle_update_boot))
             .service(web::resource("/update/mbr").to(handle_update_mbr))
             .service(web::resource("/update/root").to(handle_update_root))
+            .service(web::resource("/switch").to(handle_switch))
     })
     .bind_rustls("[::]:8443", config)?
     .run()
