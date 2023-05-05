@@ -20,6 +20,8 @@ const KiB: usize = 1024;
 const MiB: usize = 1024 * KiB;
 
 async fn handle_reboot() -> HttpResponse {
+    println!("[admind] request reboot");
+
     match reboot(RebootMode::RB_AUTOBOOT) {
         Ok(_) => HttpResponse::Ok()
             .content_type(ContentType::plaintext())
@@ -31,6 +33,8 @@ async fn handle_reboot() -> HttpResponse {
 }
 
 async fn handle_shutdown() -> HttpResponse {
+    println!("[admind] request shutdown");
+
     match reboot(RebootMode::RB_POWER_OFF) {
         Ok(_) => HttpResponse::Ok()
             .content_type(ContentType::plaintext())
@@ -42,6 +46,8 @@ async fn handle_shutdown() -> HttpResponse {
 }
 
 async fn handle_update_boot(data: web::Bytes) -> HttpResponse {
+    println!("[admind] update boot");
+
     let boot = match boot_dev() {
         Ok(v) => v,
         Err(e) => {
@@ -74,6 +80,8 @@ async fn handle_update_boot(data: web::Bytes) -> HttpResponse {
 }
 
 async fn handle_update_mbr(data: web::Bytes) -> HttpResponse {
+    println!("[admind] update mbr");
+
     let mbr = match dev() {
         Ok(v) => v,
         Err(e) => {
@@ -94,6 +102,8 @@ async fn handle_update_mbr(data: web::Bytes) -> HttpResponse {
 }
 
 async fn handle_update_root(data: web::Bytes) -> HttpResponse {
+    println!("[admind] update inactive root");
+
     let root = match inactive_root() {
         Ok(v) => v,
         Err(e) => {
