@@ -250,6 +250,7 @@ fn modify_cmdline(old: &str, new: &str) -> Result<()> {
     replace_slice(&mut cmdline, old.as_bytes(), new.as_bytes());
     fs::write(boot, cmdline)?;
 
+    nix::unistd::sync();
     Ok(())
 }
 
@@ -333,6 +334,7 @@ async fn stream_to(dst: &str, data: &[u8]) -> Result<()> {
     file.write_all(data)?;
     file.sync_all()?;
 
+    nix::unistd::sync();
     Ok(())
 }
 
