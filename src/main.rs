@@ -3,14 +3,57 @@ use rustkrazy_admind::{Error, Result};
 use std::fs::File;
 use std::io::{self, BufReader};
 
-use actix_web::{http::header::ContentType, web, App, HttpRequest, HttpResponse, HttpServer};
+use actix_web::{
+    dev::ServiceRequest, http::header::ContentType, web, App, HttpResponse, HttpServer,
+};
+use actix_web_httpauth::extractors::basic::{BasicAuth, Config};
+use actix_web_httpauth::extractors::AuthenticationError;
+use actix_web_httpauth::middleware::HttpAuthentication;
+use nix::sys::reboot::{reboot, RebootMode};
 use rustls::{Certificate, PrivateKey, ServerConfig};
 use rustls_pemfile::{certs, pkcs8_private_keys};
 
-async fn index(req: HttpRequest) -> HttpResponse {
-    HttpResponse::Ok()
-        .content_type(ContentType::plaintext())
-        .body("it works")
+async fn handle_reboot() -> HttpResponse {
+    match reboot(RebootMode::RB_AUTOBOOT) {
+        Ok(_) => HttpResponse::Ok()
+            .content_type(ContentType::plaintext())
+            .body("rebooting..."),
+        Err(e) => HttpResponse::InternalServerError()
+            .content_type(ContentType::plaintext())
+            .body(format!("can't reboot: {}", e)),
+    }
+}
+
+async fn basic_auth_validator(
+    req: ServiceRequest,
+    credentials: BasicAuth,
+) -> std::result::Result<ServiceRequest, (actix_web::Error, ServiceRequest)> {
+    let config = req.app_data::<Config>().cloned().unwrap_or_default();
+
+    match validate_credentials(
+        credentials.user_id(),
+        credentials.password().unwrap_or_default().trim(),
+    ) {
+        Ok(res) => {
+            if res {
+                Ok(req)
+            } else {
+                Err((AuthenticationError::from(config).into(), req))
+            }
+        }
+        Err(_) => Err((AuthenticationError::from(config).into(), req)),
+    }
+}
+
+fn validate_credentials(user_id: &str, user_password: &str) -> io::Result<bool> {
+    if user_id == "rustkrazy" && user_password == "rustkrazy" {
+        return Ok(true);
+    }
+
+    Err(io::Error::new(
+        io::ErrorKind::PermissionDenied,
+        "Invalid credentials",
+    ))
 }
 
 #[actix_web::main]
@@ -31,12 +74,15 @@ async fn start() -> Result<()> {
 
     println!("[admind] start https://[::]:8443");
 
-    Ok(
-        HttpServer::new(|| App::new().service(web::resource("/").to(index)))
-            .bind_rustls("[::]:8443", config)?
-            .run()
-            .await?,
-    )
+    Ok(HttpServer::new(|| {
+        let auth = HttpAuthentication::basic(basic_auth_validator);
+        App::new()
+            .wrap(auth)
+            .service(web::resource("/rustkrazy/reboot").to(handle_reboot))
+    })
+    .bind_rustls("[::]:8443", config)?
+    .run()
+    .await?)
 }
 
 fn load_rustls_config() -> Result<ServerConfig> {
