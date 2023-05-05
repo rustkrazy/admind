@@ -46,7 +46,7 @@ async fn handle_shutdown() -> HttpResponse {
 }
 
 async fn handle_update_boot(data: web::Bytes) -> HttpResponse {
-    println!("[admind] update boot");
+    println!("[admind] update boot ({} bytes)", data.len());
 
     let boot = match boot_dev() {
         Ok(v) => v,
