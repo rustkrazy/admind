@@ -13,11 +13,17 @@ use constant_time_eq::constant_time_eq;
 use nix::sys::reboot::{reboot, RebootMode};
 use rustls::{Certificate, PrivateKey, ServerConfig};
 use rustls_pemfile::{certs, pkcs8_private_keys};
+use serde::Deserialize;
 
 #[allow(non_upper_case_globals)]
 const KiB: usize = 1024;
 #[allow(non_upper_case_globals)]
 const MiB: usize = 1024 * KiB;
+
+#[derive(Clone, Debug, Deserialize)]
+struct DataRequest {
+    path: String,
+}
 
 async fn handle_reboot() -> HttpResponse {
     println!("[admind] request reboot");
@@ -136,6 +142,32 @@ async fn handle_switch() -> HttpResponse {
     }
 }
 
+async fn handle_data_read(info: web::Query<DataRequest>) -> HttpResponse {
+    let query = info.into_inner();
+
+    match fs::read(&query.path) {
+        Ok(data) => HttpResponse::Ok()
+            .content_type(ContentType::octet_stream())
+            .body(data),
+        Err(e) => HttpResponse::NotFound()
+            .content_type(ContentType::plaintext())
+            .body(format!("can't read file at {}: {}", query.path, e)),
+    }
+}
+
+async fn handle_data_write(info: web::Query<DataRequest>, data: web::Bytes) -> HttpResponse {
+    let query = info.into_inner();
+
+    match stream_to(&query.path, &data).await {
+        Ok(_) => HttpResponse::Ok()
+            .content_type(ContentType::plaintext())
+            .body(format!("successfully wrote to {}", query.path)),
+        Err(e) => HttpResponse::InternalServerError()
+            .content_type(ContentType::plaintext())
+            .body(format!("can't write file at {}: {}", query.path, e)),
+    }
+}
+
 #[actix_web::main]
 async fn main() -> io::Result<()> {
     match start().await {
@@ -165,6 +197,8 @@ async fn start() -> Result<()> {
             .service(web::resource("/update/mbr").to(handle_update_mbr))
             .service(web::resource("/update/root").to(handle_update_root))
             .service(web::resource("/switch").to(handle_switch))
+            .service(web::resource("/data/read").to(handle_data_read))
+            .service(web::resource("/data/write").to(handle_data_write))
     })
     .bind_rustls("[::]:8443", config)?
     .run()
