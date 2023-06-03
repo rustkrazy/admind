@@ -26,7 +26,7 @@ struct DataRequest {
 }
 
 async fn handle_reboot() -> HttpResponse {
-    println!("[admind] request reboot");
+    println!("request reboot");
 
     match reboot(RebootMode::RB_AUTOBOOT) {
         Ok(_) => HttpResponse::Ok()
@@ -39,7 +39,7 @@ async fn handle_reboot() -> HttpResponse {
 }
 
 async fn handle_shutdown() -> HttpResponse {
-    println!("[admind] request shutdown");
+    println!("request shutdown");
 
     match reboot(RebootMode::RB_POWER_OFF) {
         Ok(_) => HttpResponse::Ok()
@@ -52,7 +52,7 @@ async fn handle_shutdown() -> HttpResponse {
 }
 
 async fn handle_update_boot(data: web::Bytes) -> HttpResponse {
-    println!("[admind] update boot");
+    println!("update boot");
 
     let boot = match boot_dev() {
         Ok(v) => v,
@@ -86,7 +86,7 @@ async fn handle_update_boot(data: web::Bytes) -> HttpResponse {
 }
 
 async fn handle_update_mbr(data: web::Bytes) -> HttpResponse {
-    println!("[admind] update mbr");
+    println!("update mbr");
 
     let mbr = match dev() {
         Ok(v) => v,
@@ -108,7 +108,7 @@ async fn handle_update_mbr(data: web::Bytes) -> HttpResponse {
 }
 
 async fn handle_update_root(data: web::Bytes) -> HttpResponse {
-    println!("[admind] update inactive root");
+    println!("update inactive root");
 
     let root = match inactive_root() {
         Ok(v) => v,
@@ -130,7 +130,7 @@ async fn handle_update_root(data: web::Bytes) -> HttpResponse {
 }
 
 async fn handle_switch() -> HttpResponse {
-    println!("[admind] switch to inactive root");
+    println!("switch to inactive root");
 
     match switch_to_inactive_root() {
         Ok(_) => HttpResponse::Ok()
@@ -173,7 +173,7 @@ async fn main() -> io::Result<()> {
     match start().await {
         Ok(_) => {}
         Err(e) => {
-            println!("[admind] start error: {}", e);
+            println!("start error: {}", e);
             return Ok(());
         }
     }
@@ -184,7 +184,7 @@ async fn main() -> io::Result<()> {
 async fn start() -> Result<()> {
     let config = load_rustls_config()?;
 
-    println!("[admind] start https://[::]:8443");
+    println!("start https://[::]:8443");
 
     Ok(HttpServer::new(|| {
         let auth = HttpAuthentication::basic(basic_auth_validator);
