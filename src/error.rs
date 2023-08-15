@@ -4,6 +4,8 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum Error {
+    #[error("can't find cmdline (/cmdline.txt) on boot partition")]
+    NoCmdline,
     #[error("can't find disk device")]
     NoDiskDev,
     #[error("no private keys found in file")]
