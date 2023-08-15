@@ -261,9 +261,28 @@ fn validate_credentials(user_id: &str, user_password: &str) -> io::Result<bool> 
     ))
 }
 
+fn replace_slice<T>(src: &mut [T], old: &[T], new: &[T])
+where
+    T: Clone + PartialEq,
+{
+    let iteration = if src.starts_with(old) {
+        src[..old.len()].clone_from_slice(new);
+        old.len()
+    } else {
+        1
+    };
+
+    if src.len() > old.len() {
+        replace_slice(&mut src[iteration..], old, new);
+    }
+}
+
 fn modify_cmdline(old: &str, new: &str) -> Result<()> {
-    let cmdline = fs::read_to_string("/boot/cmdline.txt")?;
-    fs::write("/boot/cmdline.txt", cmdline.replace(old, new))?;
+    let boot = boot_dev()?;
+
+    let mut cmdline = fs::read(boot)?;
+    replace_slice(&mut cmdline, old.as_bytes(), new.as_bytes());
+    fs::write(boot, cmdline)?;
 
     nix::unistd::sync();
     Ok(())
