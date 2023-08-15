@@ -285,9 +285,7 @@ fn modify_cmdline(old: &str, new: &str) -> Result<()> {
     let cmdline_offset = buf
         .windows(cmdline_buf.len())
         .position(|window| window == cmdline_buf)
-        .ok_or(Error::NoCmdline)?
-        / 512
-        + 1;
+        .ok_or(Error::NoCmdline)?;
 
     replace_slice(
         &mut buf[cmdline_offset..cmdline_offset + cmdline_buf.len()],
