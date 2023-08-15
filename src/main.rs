@@ -279,21 +279,12 @@ where
 
 fn modify_cmdline(old: &str, new: &str) -> Result<()> {
     let boot = boot_dev()?;
-    let mut buf = fs::read(boot)?;
 
-    let cmdline_buf = fs::read("/boot/cmdline.txt")?;
-    let cmdline_offset = buf
-        .windows(cmdline_buf.len())
-        .position(|window| window == cmdline_buf)
-        .ok_or(Error::NoCmdline)?
-        / 512
-        + 1;
+    let mut cmdline = fs::read(boot)?;
+    replace_slice(&mut cmdline, old.as_bytes(), new.as_bytes());
+    fs::write(boot, cmdline)?;
 
-    replace_slice(&mut buf[cmdline_offset..], old.as_bytes(), new.as_bytes());
-
-    fs::write(boot, buf)?;
     nix::unistd::sync();
-
     Ok(())
 }
 
