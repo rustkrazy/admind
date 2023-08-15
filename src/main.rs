@@ -289,7 +289,11 @@ fn modify_cmdline(old: &str, new: &str) -> Result<()> {
         / 512
         + 1;
 
-    replace_slice(&mut buf[cmdline_offset..], old.as_bytes(), new.as_bytes());
+    replace_slice(
+        &mut buf[cmdline_offset..cmdline_offset + cmdline_buf.len()],
+        old.as_bytes(),
+        new.as_bytes(),
+    );
 
     fs::write(boot, buf)?;
     nix::unistd::sync();
