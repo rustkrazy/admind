@@ -65,24 +65,12 @@ async fn handle_update_boot(data: web::Bytes) -> HttpResponse {
     };
 
     match stream_to(boot, &data).await {
-        Ok(_) => {}
-        Err(e) => {
-            return HttpResponse::InternalServerError()
-                .content_type(ContentType::plaintext())
-                .body(format!("can't update boot partition: {}", e))
-        }
-    }
-
-    match switch_to_inactive_root() {
         Ok(_) => HttpResponse::Ok()
             .content_type(ContentType::plaintext())
-            .body("successfully updated boot partition and switched to inactive root"),
+            .body("successfully updated boot partition"),
         Err(e) => HttpResponse::InternalServerError()
             .content_type(ContentType::plaintext())
-            .body(format!(
-                "can't switch to inactive root (this is probably fatal): {}",
-                e
-            )),
+            .body(format!("can't update boot partition: {}", e)),
     }
 }
 
