@@ -1,7 +1,7 @@
 use rustkrazy_admind::{Error, Result};
 
 use std::fs::{self, File};
-use std::io::{self, BufReader, Read, Write};
+use std::io::{self, BufReader, Read, Seek, Write};
 
 use actix_web::{
     dev::ServiceRequest, http::header::ContentType, web, App, HttpResponse, HttpServer,
@@ -272,6 +272,7 @@ fn modify_cmdline(old: &str, new: &str) -> Result<()> {
 
     let mut cmdline = String::new();
     file.read_to_string(&mut cmdline)?;
+    file.rewind()?;
     file.write_all(cmdline.replace(old, new).as_bytes())?;
 
     nix::unistd::sync();
