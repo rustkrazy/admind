@@ -260,7 +260,6 @@ fn modify_cmdline(new: &str) -> Result<()> {
 
     file.write_all(new.as_bytes())?;
 
-    nix::unistd::sync();
     Ok(())
 }
 
@@ -355,5 +354,7 @@ fn switch_to_inactive_root() -> Result<()> {
     let cmdline = format!("{} init=/bin/init rootwait console=tty1", new);
 
     modify_cmdline(&cmdline)?;
+    nix::unistd::sync();
+
     Ok(())
 }
