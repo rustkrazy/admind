@@ -1,7 +1,7 @@
 use rustkrazy_admind::{Error, Result};
 
 use std::fs::{self, File, OpenOptions};
-use std::io::{self, BufReader, Read, Seek, Write};
+use std::io::{self, BufReader, Write};
 
 use actix_web::{
     dev::ServiceRequest, http::header::ContentType, web, App, HttpResponse, HttpServer,
@@ -250,7 +250,7 @@ fn validate_credentials(user_id: &str, user_password: &str) -> io::Result<bool> 
     ))
 }
 
-fn modify_cmdline(old: &str, new: &str) -> Result<()> {
+fn modify_cmdline(new: &str) -> Result<()> {
     let boot = boot_dev()?;
     let boot_partition = OpenOptions::new().read(true).write(true).open(boot)?;
     let buf_stream = BufStream::new(boot_partition);
@@ -258,10 +258,7 @@ fn modify_cmdline(old: &str, new: &str) -> Result<()> {
 
     let mut file = bootfs.root_dir().open_file("cmdline.txt")?;
 
-    let mut cmdline = String::new();
-    file.read_to_string(&mut cmdline)?;
-    file.rewind()?;
-    file.write_all(cmdline.replace(old, new).as_bytes())?;
+    file.write_all(new.as_bytes())?;
 
     nix::unistd::sync();
     Ok(())
@@ -288,29 +285,29 @@ fn boot_dev() -> Result<&'static str> {
     })
 }
 
-fn active_root() -> Result<String> {
-    let cmdline = fs::read_to_string("/proc/cmdline")?;
-
-    for seg in cmdline.split(' ') {
-        if seg.starts_with("root=PARTUUID=00000000-") {
-            let root_id = seg
-                .split("root=PARTUUID=00000000-0")
-                .collect::<Vec<&str>>()
-                .into_iter()
-                .next_back()
-                .ok_or(Error::RootdevUnset)?;
-
-            return Ok(match dev()? {
-                "/dev/mmcblk0" => format!("/dev/mmcblk0p{}", root_id),
-                "/dev/sda" => format!("/dev/sda{}", root_id),
-                "/dev/vda" => format!("/dev/vda{}", root_id),
-                _ => unreachable!(),
-            });
-        }
-    }
-
-    Err(Error::RootdevUnset)
-}
+// fn active_root() -> Result<String> {
+//     let cmdline = fs::read_to_string("/proc/cmdline")?;
+//
+//     for seg in cmdline.split(' ') {
+//         if seg.starts_with("root=PARTUUID=00000000-") {
+//             let root_id = seg
+//                 .split("root=PARTUUID=00000000-0")
+//                 .collect::<Vec<&str>>()
+//                 .into_iter()
+//                 .next_back()
+//                 .ok_or(Error::RootdevUnset)?;
+//
+//             return Ok(match dev()? {
+//                 "/dev/mmcblk0" => format!("/dev/mmcblk0p{}", root_id),
+//                 "/dev/sda" => format!("/dev/sda{}", root_id),
+//                 "/dev/vda" => format!("/dev/vda{}", root_id),
+//                 _ => unreachable!(),
+//             });
+//         }
+//     }
+//
+//     Err(Error::RootdevUnset)
+// }
 
 fn inactive_root() -> Result<String> {
     let cmdline = fs::read_to_string("/proc/cmdline")?;
@@ -352,12 +349,11 @@ async fn stream_to(dst: &str, data: &[u8]) -> Result<()> {
 }
 
 fn switch_to_inactive_root() -> Result<()> {
-    let old = active_root()?;
     let new = inactive_root()?;
-
-    let old = String::from("root=PARTUUID=00000000-0") + &old.chars().last().unwrap().to_string();
     let new = String::from("root=PARTUUID=00000000-0") + &new.chars().last().unwrap().to_string();
 
-    modify_cmdline(&old, &new)?;
+    let cmdline = format!("{} init=/bin/init rootwait console=tty1", new);
+
+    modify_cmdline(&cmdline)?;
     Ok(())
 }
