@@ -1,7 +1,7 @@
 use rustkrazy_admind::{Error, Result};
 
 use std::fs::{self, File};
-use std::io::{self, BufReader, Write};
+use std::io::{self, BufReader, Read, Write};
 
 use actix_web::{
     dev::ServiceRequest, http::header::ContentType, web, App, HttpResponse, HttpServer,
@@ -10,6 +10,7 @@ use actix_web_httpauth::extractors::basic::{BasicAuth, Config};
 use actix_web_httpauth::extractors::AuthenticationError;
 use actix_web_httpauth::middleware::HttpAuthentication;
 use constant_time_eq::constant_time_eq;
+use fscommon::BufStream;
 use nix::sys::reboot::{reboot, RebootMode};
 use rustls::{Certificate, PrivateKey, ServerConfig};
 use rustls_pemfile::{certs, pkcs8_private_keys};
@@ -261,28 +262,17 @@ fn validate_credentials(user_id: &str, user_password: &str) -> io::Result<bool> 
     ))
 }
 
-fn replace_slice<T>(src: &mut [T], old: &[T], new: &[T])
-where
-    T: Clone + PartialEq,
-{
-    let iteration = if src.starts_with(old) {
-        src[..old.len()].clone_from_slice(new);
-        old.len()
-    } else {
-        1
-    };
-
-    if src.len() > old.len() {
-        replace_slice(&mut src[iteration..], old, new);
-    }
-}
-
 fn modify_cmdline(old: &str, new: &str) -> Result<()> {
     let boot = boot_dev()?;
+    let boot_partition = File::open(boot)?;
+    let buf_stream = BufStream::new(boot_partition);
+    let bootfs = fatfs::FileSystem::new(buf_stream, fatfs::FsOptions::new())?;
 
-    let mut cmdline = fs::read(boot)?;
-    replace_slice(&mut cmdline, old.as_bytes(), new.as_bytes());
-    fs::write(boot, cmdline)?;
+    let mut file = bootfs.root_dir().open_file("cmdline.txt")?;
+
+    let mut cmdline = String::new();
+    file.read_to_string(&mut cmdline)?;
+    file.write_all(cmdline.replace(old, new).as_bytes())?;
 
     nix::unistd::sync();
     Ok(())
