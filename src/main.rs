@@ -1,6 +1,6 @@
 use rustkrazy_admind::{Error, Result};
 
-use std::fs::{self, File};
+use std::fs::{self, File, OpenOptions};
 use std::io::{self, BufReader, Read, Seek, Write};
 
 use actix_web::{
@@ -264,7 +264,7 @@ fn validate_credentials(user_id: &str, user_password: &str) -> io::Result<bool> 
 
 fn modify_cmdline(old: &str, new: &str) -> Result<()> {
     let boot = boot_dev()?;
-    let boot_partition = File::open(boot)?;
+    let boot_partition = OpenOptions::new().read(true).write(true).open(boot)?;
     let buf_stream = BufStream::new(boot_partition);
     let bootfs = fatfs::FileSystem::new(buf_stream, fatfs::FsOptions::new())?;
 
