@@ -11,10 +11,10 @@ use actix_web_httpauth::extractors::AuthenticationError;
 use actix_web_httpauth::middleware::HttpAuthentication;
 use constant_time_eq::constant_time_eq;
 use fscommon::BufStream;
-use nix::sys::reboot::{reboot, RebootMode};
 use rustls::{Certificate, PrivateKey, ServerConfig};
 use rustls_pemfile::{certs, pkcs8_private_keys};
 use serde::Deserialize;
+use sysinfo::{Pid, ProcessExt, Signal, System, SystemExt};
 
 #[allow(non_upper_case_globals)]
 const KiB: usize = 1024;
@@ -29,26 +29,32 @@ struct DataRequest {
 async fn handle_reboot() -> HttpResponse {
     println!("request reboot");
 
-    match reboot(RebootMode::RB_AUTOBOOT) {
-        Ok(_) => HttpResponse::Ok()
+    if let Some(init) = System::new_all().process(Pid::from(1)) {
+        init.kill_with(Signal::User1);
+
+        HttpResponse::Ok()
             .content_type(ContentType::plaintext())
-            .body("rebooting..."),
-        Err(e) => HttpResponse::InternalServerError()
+            .body("rebooting...")
+    } else {
+        HttpResponse::InternalServerError()
             .content_type(ContentType::plaintext())
-            .body(format!("can't reboot: {}", e)),
+            .body("can't reboot: no pid1")
     }
 }
 
 async fn handle_shutdown() -> HttpResponse {
     println!("request shutdown");
 
-    match reboot(RebootMode::RB_POWER_OFF) {
-        Ok(_) => HttpResponse::Ok()
+    if let Some(init) = System::new_all().process(Pid::from(1)) {
+        init.kill_with(Signal::User2);
+
+        HttpResponse::Ok()
             .content_type(ContentType::plaintext())
-            .body("shutting down..."),
-        Err(e) => HttpResponse::InternalServerError()
+            .body("shutting down...")
+    } else {
+        HttpResponse::InternalServerError()
             .content_type(ContentType::plaintext())
-            .body(format!("can't shut down: {}", e)),
+            .body("can't shut down: {}")
     }
 }
 
