@@ -1,5 +1,3 @@
-use rustkrazy_admind::{Error, Result};
-
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, BufReader, Write};
 
@@ -15,11 +13,32 @@ use rustls::{Certificate, PrivateKey, ServerConfig};
 use rustls_pemfile::{certs, pkcs8_private_keys};
 use serde::Deserialize;
 use sysinfo::{Pid, ProcessExt, Signal, System, SystemExt};
+use thiserror::Error;
 
 #[allow(non_upper_case_globals)]
 const KiB: usize = 1024;
 #[allow(non_upper_case_globals)]
 const MiB: usize = 1024 * KiB;
+
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("can't find disk device")]
+    NoDiskDev,
+    #[error("no private keys found in file")]
+    NoPrivateKeys,
+    #[error("no rootfs set in active cmdline")]
+    RootdevUnset,
+
+    #[error("io error: {0}")]
+    Io(#[from] io::Error),
+
+    #[error("actix_web error: {0}")]
+    ActixWeb(#[from] actix_web::Error),
+    #[error("rustls error: {0}")]
+    Rustls(#[from] rustls::Error),
+}
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Clone, Debug, Deserialize)]
 struct DataRequest {
