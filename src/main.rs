@@ -199,7 +199,7 @@ async fn handle_stats_top() -> HttpResponse {
         .processes()
         .values()
         .map(|process| format!("{} {}%", process.name(), process.cpu_usage()))
-        .reduce(|acc, line| acc + &line + "<br>")
+        .reduce(|acc, line| acc + "<br>" + &line)
         .unwrap_or(String::new());
 
     HttpResponse::Ok()
