@@ -2,7 +2,8 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{self, BufReader, Write};
 
 use actix_web::{
-    dev::ServiceRequest, http::header::ContentType, web, App, HttpResponse, HttpServer,
+    dev::ServiceRequest, http::header::ContentType, rt::time::sleep, web, App, HttpResponse,
+    HttpServer,
 };
 use actix_web_httpauth::extractors::basic::{BasicAuth, Config};
 use actix_web_httpauth::extractors::AuthenticationError;
@@ -182,6 +183,30 @@ async fn handle_data_write(info: web::Query<DataRequest>, data: web::Bytes) -> H
     }
 }
 
+async fn handle_stats_top() -> HttpResponse {
+    println!("monitor stats");
+
+    let mut s = System::new_all();
+
+    for process in s.processes().values() {
+        process.cpu_usage();
+    }
+
+    sleep(<System as SystemExt>::MINIMUM_CPU_UPDATE_INTERVAL).await;
+    s.refresh_all();
+
+    let out = s
+        .processes()
+        .values()
+        .map(|process| format!("{} {}%", process.name(), process.cpu_usage()))
+        .reduce(|acc, line| acc + &line + "<br>")
+        .unwrap_or(String::new());
+
+    HttpResponse::Ok()
+        .content_type(ContentType::html())
+        .body(out)
+}
+
 #[actix_web::main]
 async fn main() -> io::Result<()> {
     match start().await {
@@ -213,6 +238,7 @@ async fn start() -> Result<()> {
             .service(web::resource("/switch").to(handle_switch))
             .service(web::resource("/data/read").to(handle_data_read))
             .service(web::resource("/data/write").to(handle_data_write))
+            .service(web::resource("/stats/top").to(handle_stats_top))
     })
     .bind_rustls("[::]:8443", config)?
     .run()
