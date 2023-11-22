@@ -219,6 +219,8 @@ async fn handle_proc_kill(info: web::Query<KillRequest>) -> HttpResponse {
     let signal = match query.signal.as_str() {
         "usr1" => Signal::User1,
         "usr2" => Signal::User2,
+        "hup" => Signal::Hangup,
+        "alrm" => Signal::Alarm,
         "term" => Signal::Term,
         "kill" => Signal::Kill,
         _ => {
