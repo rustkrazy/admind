@@ -183,8 +183,8 @@ async fn handle_data_write(info: web::Query<DataRequest>, data: web::Bytes) -> H
     }
 }
 
-async fn handle_stats_top() -> HttpResponse {
-    println!("monitor stats");
+async fn handle_proc_top() -> HttpResponse {
+    println!("monitor processes");
 
     let mut s = System::new_all();
 
@@ -238,7 +238,7 @@ async fn start() -> Result<()> {
             .service(web::resource("/switch").to(handle_switch))
             .service(web::resource("/data/read").to(handle_data_read))
             .service(web::resource("/data/write").to(handle_data_write))
-            .service(web::resource("/stats/top").to(handle_stats_top))
+            .service(web::resource("/proc/top").to(handle_proc_top))
     })
     .bind_rustls("[::]:8443", config)?
     .run()
