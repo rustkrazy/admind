@@ -46,6 +46,12 @@ struct DataRequest {
     path: String,
 }
 
+#[derive(Clone, Debug, Deserialize)]
+struct KillRequest {
+    process: String,
+    signal: String,
+}
+
 async fn handle_reboot() -> HttpResponse {
     println!("request reboot");
 
@@ -207,6 +213,32 @@ async fn handle_proc_top() -> HttpResponse {
         .body(out)
 }
 
+async fn handle_proc_kill(info: web::Query<KillRequest>) -> HttpResponse {
+    let query = info.into_inner();
+
+    let signal = match query.signal.as_str() {
+        "usr1" => Signal::User1,
+        "usr2" => Signal::User2,
+        "term" => Signal::Term,
+        "kill" => Signal::Kill,
+        _ => {
+            return HttpResponse::BadRequest()
+                .content_type(ContentType::plaintext())
+                .body("invalid signal, need usr1, usr2, term or kill")
+        }
+    };
+
+    println!("kill process {} signal {}", query.process, query.signal);
+
+    for process in System::new_all().processes_by_exact_name(&query.process) {
+        process.kill_with(signal);
+    }
+
+    HttpResponse::Ok()
+        .content_type(ContentType::plaintext())
+        .body("kill successful")
+}
+
 #[actix_web::main]
 async fn main() -> io::Result<()> {
     match start().await {
@@ -239,6 +271,7 @@ async fn start() -> Result<()> {
             .service(web::resource("/data/read").to(handle_data_read))
             .service(web::resource("/data/write").to(handle_data_write))
             .service(web::resource("/proc/top").to(handle_proc_top))
+            .service(web::resource("/proc/kill").to(handle_proc_kill))
     })
     .bind_rustls("[::]:8443", config)?
     .run()
