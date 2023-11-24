@@ -233,6 +233,19 @@ async fn handle_data_list(info: web::Query<DataRequest>) -> HttpResponse {
     }
 }
 
+async fn handle_data_removedir(info: web::Query<DataRequest>) -> HttpResponse {
+    let query = info.into_inner();
+
+    match fs::remove_dir_all(&query.path) {
+        Ok(_) => HttpResponse::Ok()
+            .content_type(ContentType::plaintext())
+            .body(format!("successfully removed {}", query.path)),
+        Err(e) => HttpResponse::InternalServerError()
+            .content_type(ContentType::plaintext())
+            .body(format!("can't remove {}: {}", query.path, e)),
+    }
+}
+
 async fn handle_proc_top() -> HttpResponse {
     println!("monitor processes");
 
@@ -317,6 +330,7 @@ async fn start() -> Result<()> {
             .service(web::resource("/data/read").to(handle_data_read))
             .service(web::resource("/data/write").to(handle_data_write))
             .service(web::resource("/data/list").to(handle_data_list))
+            .service(web::resource("/data/removedir").to(handle_data_removedir))
             .service(web::resource("/proc/top").to(handle_proc_top))
             .service(web::resource("/proc/kill").to(handle_proc_kill))
     })
