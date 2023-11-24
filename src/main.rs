@@ -80,7 +80,7 @@ async fn handle_shutdown() -> HttpResponse {
     } else {
         HttpResponse::InternalServerError()
             .content_type(ContentType::plaintext())
-            .body("can't shut down: {}")
+            .body("can't shut down: no pid1")
     }
 }
 
