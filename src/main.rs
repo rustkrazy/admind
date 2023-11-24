@@ -1,5 +1,6 @@
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, BufReader, Write};
+use std::os::unix::fs::{MetadataExt, PermissionsExt};
 
 use actix_web::{
     dev::ServiceRequest, http::header::ContentType, rt::time::sleep, web, App, HttpResponse,
@@ -198,7 +199,29 @@ async fn handle_data_list(info: web::Query<DataRequest>) -> HttpResponse {
             .body(
                 ls.map(|result| {
                     result
-                        .map(|entry| format!("{}", entry.path().display()))
+                        .map(|entry| match entry.metadata() {
+                            Ok(meta) => {
+                                format!(
+                                    "ty={} perm={:4o} uid={:5} gid={:5}  {}",
+                                    if meta.is_symlink() {
+                                        "s"
+                                    } else if meta.is_dir() {
+                                        "d"
+                                    } else {
+                                        "-"
+                                    },
+                                    meta.permissions().mode() & 0xfff,
+                                    meta.uid(),
+                                    meta.gid(),
+                                    entry.path().display()
+                                )
+                            }
+                            Err(e) => format!(
+                                "ty=? perm=????  {} (meta error: {})",
+                                entry.path().display(),
+                                e
+                            ),
+                        })
                         .unwrap_or_else(|e| format!("error: {}", e))
                 })
                 .reduce(|acc, entry| acc + "\n" + &entry)
