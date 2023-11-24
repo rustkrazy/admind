@@ -189,6 +189,27 @@ async fn handle_data_write(info: web::Query<DataRequest>, data: web::Bytes) -> H
     }
 }
 
+async fn handle_data_list(info: web::Query<DataRequest>) -> HttpResponse {
+    let query = info.into_inner();
+
+    match fs::read_dir(&query.path) {
+        Ok(ls) => HttpResponse::Ok()
+            .content_type(ContentType::plaintext())
+            .body(
+                ls.map(|result| {
+                    result
+                        .map(|entry| format!("{}", entry.path().display()))
+                        .unwrap_or_else(|e| format!("{}", e))
+                })
+                .reduce(|acc, entry| acc + "\n" + &entry)
+                .unwrap_or(String::new()),
+            ),
+        Err(e) => HttpResponse::InternalServerError()
+            .content_type(ContentType::plaintext())
+            .body(format!("can't read dir at {}: {}", query.path, e)),
+    }
+}
+
 async fn handle_proc_top() -> HttpResponse {
     println!("monitor processes");
 
@@ -272,6 +293,7 @@ async fn start() -> Result<()> {
             .service(web::resource("/switch").to(handle_switch))
             .service(web::resource("/data/read").to(handle_data_read))
             .service(web::resource("/data/write").to(handle_data_write))
+            .service(web::resource("/data/list").to(handle_data_list))
             .service(web::resource("/proc/top").to(handle_proc_top))
             .service(web::resource("/proc/kill").to(handle_proc_kill))
     })
