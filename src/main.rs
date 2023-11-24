@@ -199,7 +199,7 @@ async fn handle_data_list(info: web::Query<DataRequest>) -> HttpResponse {
                 ls.map(|result| {
                     result
                         .map(|entry| format!("{}", entry.path().display()))
-                        .unwrap_or_else(|e| format!("{}", e))
+                        .unwrap_or_else(|e| format!("error: {}", e))
                 })
                 .reduce(|acc, entry| acc + "\n" + &entry)
                 .unwrap_or(String::new()),
