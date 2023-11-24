@@ -233,6 +233,19 @@ async fn handle_data_list(info: web::Query<DataRequest>) -> HttpResponse {
     }
 }
 
+async fn handle_data_mkdir(info: web::Query<DataRequest>) -> HttpResponse {
+    let query = info.into_inner();
+
+    match fs::create_dir_all(&query.path) {
+        Ok(_) => HttpResponse::Ok()
+            .content_type(ContentType::plaintext())
+            .body(format!("successfully created directory {}", query.path)),
+        Err(e) => HttpResponse::InternalServerError()
+            .content_type(ContentType::plaintext())
+            .body(format!("can't create directory {}: {}", query.path, e)),
+    }
+}
+
 async fn handle_data_remove(info: web::Query<DataRequest>) -> HttpResponse {
     let query = info.into_inner();
 
@@ -343,6 +356,7 @@ async fn start() -> Result<()> {
             .service(web::resource("/data/read").to(handle_data_read))
             .service(web::resource("/data/write").to(handle_data_write))
             .service(web::resource("/data/list").to(handle_data_list))
+            .service(web::resource("/data/mkdir").to(handle_data_mkdir))
             .service(web::resource("/data/remove").to(handle_data_remove))
             .service(web::resource("/data/removedir").to(handle_data_removedir))
             .service(web::resource("/proc/top").to(handle_proc_top))
