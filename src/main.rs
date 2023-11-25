@@ -167,6 +167,8 @@ async fn handle_switch() -> HttpResponse {
 async fn handle_data_read(info: web::Query<DataRequest>) -> HttpResponse {
     let query = info.into_inner();
 
+    println!("read {}", query.path);
+
     match fs::read(&query.path) {
         Ok(data) => HttpResponse::Ok()
             .content_type(ContentType::octet_stream())
@@ -180,6 +182,8 @@ async fn handle_data_read(info: web::Query<DataRequest>) -> HttpResponse {
 async fn handle_data_write(info: web::Query<DataRequest>, data: web::Bytes) -> HttpResponse {
     let query = info.into_inner();
 
+    println!("write {}", query.path);
+
     match stream_to(&query.path, &data).await {
         Ok(_) => HttpResponse::Ok()
             .content_type(ContentType::plaintext())
@@ -192,6 +196,8 @@ async fn handle_data_write(info: web::Query<DataRequest>, data: web::Bytes) -> H
 
 async fn handle_data_list(info: web::Query<DataRequest>) -> HttpResponse {
     let query = info.into_inner();
+
+    println!("list {}", query.path);
 
     match fs::read_dir(&query.path) {
         Ok(ls) => HttpResponse::Ok()
@@ -236,6 +242,8 @@ async fn handle_data_list(info: web::Query<DataRequest>) -> HttpResponse {
 async fn handle_data_mkdir(info: web::Query<DataRequest>) -> HttpResponse {
     let query = info.into_inner();
 
+    println!("mkdir {}", query.path);
+
     match fs::create_dir_all(&query.path) {
         Ok(_) => HttpResponse::Ok()
             .content_type(ContentType::plaintext())
@@ -249,6 +257,8 @@ async fn handle_data_mkdir(info: web::Query<DataRequest>) -> HttpResponse {
 async fn handle_data_remove(info: web::Query<DataRequest>) -> HttpResponse {
     let query = info.into_inner();
 
+    println!("remove {}", query.path);
+
     match fs::remove_file(&query.path) {
         Ok(_) => HttpResponse::Ok()
             .content_type(ContentType::plaintext())
@@ -261,6 +271,8 @@ async fn handle_data_remove(info: web::Query<DataRequest>) -> HttpResponse {
 
 async fn handle_data_removedir(info: web::Query<DataRequest>) -> HttpResponse {
     let query = info.into_inner();
+
+    println!("removedir {}", query.path);
 
     match fs::remove_dir_all(&query.path) {
         Ok(_) => HttpResponse::Ok()
