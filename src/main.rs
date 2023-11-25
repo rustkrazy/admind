@@ -288,11 +288,11 @@ async fn handle_proc_top() -> HttpResponse {
         .processes()
         .values()
         .map(|process| format!("{} {}%", process.name(), process.cpu_usage()))
-        .reduce(|acc, line| acc + "<br>" + &line)
+        .reduce(|acc, line| acc + "\n" + &line)
         .unwrap_or(String::new());
 
     HttpResponse::Ok()
-        .content_type(ContentType::html())
+        .content_type(ContentType::plaintext())
         .body(out)
 }
 
