@@ -1,3 +1,4 @@
+use std::fmt;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, BufReader, Write};
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
@@ -15,30 +16,58 @@ use rustls::{Certificate, PrivateKey, ServerConfig};
 use rustls_pemfile::{certs, pkcs8_private_keys};
 use serde::Deserialize;
 use sysinfo::{Pid, ProcessExt, Signal, System, SystemExt};
-use thiserror::Error;
 
 #[allow(non_upper_case_globals)]
 const KiB: usize = 1024;
 #[allow(non_upper_case_globals)]
 const MiB: usize = 1024 * KiB;
 
-#[derive(Debug, Error)]
+#[derive(Debug)]
 pub enum Error {
-    #[error("can't find disk device")]
     NoDiskDev,
-    #[error("no private keys found in file")]
     NoPrivateKeys,
-    #[error("no rootfs set in active cmdline")]
     RootdevUnset,
 
-    #[error("io error: {0}")]
-    Io(#[from] io::Error),
+    Io(io::Error),
 
-    #[error("actix_web error: {0}")]
-    ActixWeb(#[from] actix_web::Error),
-    #[error("rustls error: {0}")]
-    Rustls(#[from] rustls::Error),
+    ActixWeb(actix_web::Error),
+    Rustls(rustls::Error),
 }
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NoDiskDev => write!(f, "can't find disk device")?,
+            Self::NoPrivateKeys => write!(f, "no private keys found in file")?,
+            Self::RootdevUnset => write!(f, "no rootfs set in active cmdline")?,
+            Self::Io(e) => write!(f, "io error: {}", e)?,
+            Self::ActixWeb(e) => write!(f, "actix_web error: {}", e)?,
+            Self::Rustls(e) => write!(f, "rustls error: {}", e)?,
+        }
+
+        Ok(())
+    }
+}
+
+impl From<io::Error> for Error {
+    fn from(e: io::Error) -> Error {
+        Error::Io(e)
+    }
+}
+
+impl From<actix_web::Error> for Error {
+    fn from(e: actix_web::Error) -> Error {
+        Error::ActixWeb(e)
+    }
+}
+
+impl From<rustls::Error> for Error {
+    fn from(e: rustls::Error) -> Error {
+        Error::Rustls(e)
+    }
+}
+
+impl std::error::Error for Error {}
 
 pub type Result<T> = std::result::Result<T, Error>;
 
