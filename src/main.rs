@@ -10,6 +10,7 @@ use actix_web::{
 use actix_web_httpauth::extractors::basic::{BasicAuth, Config};
 use actix_web_httpauth::extractors::AuthenticationError;
 use actix_web_httpauth::middleware::HttpAuthentication;
+use argon2::{Argon2, PasswordHash, PasswordVerifier};
 use constant_time_eq::constant_time_eq;
 use fscommon::BufStream;
 use rustls::{Certificate, PrivateKey, ServerConfig};
@@ -438,7 +439,7 @@ async fn basic_auth_validator(
 
     match validate_credentials(
         credentials.user_id(),
-        credentials.password().unwrap_or_default().trim(),
+        credentials.password().unwrap_or_default().trim().as_bytes(),
     ) {
         Ok(res) => {
             if res {
@@ -451,17 +452,52 @@ async fn basic_auth_validator(
     }
 }
 
-fn validate_credentials(user_id: &str, user_password: &str) -> io::Result<bool> {
-    let correct_password = fs::read("/data/admind.passwd")?;
-
-    if user_id == "rustkrazy" && constant_time_eq(user_password.as_bytes(), &correct_password) {
-        return Ok(true);
+fn validate_credentials(user_id: &str, user_password: &[u8]) -> io::Result<bool> {
+    if user_id != "rustkrazy" {
+        println!("bad user {}", user_id);
+        return Ok(false);
     }
 
-    Err(io::Error::new(
-        io::ErrorKind::PermissionDenied,
-        "Invalid credentials",
-    ))
+    match fs::read_to_string("/data/passwd.argon2id") {
+        Ok(phc) => verify_argon2id(user_password, &phc),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => verify_plain(user_password),
+        Err(e) => {
+            println!("auth: read /data/passwd.argon2id: {}", e);
+            Err(e)
+        }
+    }
+}
+
+fn verify_argon2id(password: &[u8], phc: &str) -> io::Result<bool> {
+    let parsed_hash = match PasswordHash::new(phc) {
+        Ok(p) => p,
+        Err(e) => {
+            println!("bad phc {}: {}", phc, e);
+            return Err(io::Error::other(e));
+        }
+    };
+
+    let success = Argon2::default()
+        .verify_password(password, &parsed_hash)
+        .is_ok();
+
+    println!("auth {} argon2id", if success { "ok" } else { "err" });
+    Ok(success)
+}
+
+fn verify_plain(password: &[u8]) -> io::Result<bool> {
+    let correct_password = match fs::read("/data/admind.passwd") {
+        Ok(p) => p,
+        Err(e) => {
+            println!("auth: read /data/admind.passwd: {}", e);
+            return Err(e);
+        }
+    };
+
+    let success = constant_time_eq(password, &correct_password);
+
+    println!("auth {} plain", if success { "ok" } else { "err" });
+    Ok(success)
 }
 
 fn modify_cmdline(new: &str) -> Result<()> {

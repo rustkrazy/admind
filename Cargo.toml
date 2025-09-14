@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 actix-web = { version = "4.3.1", features = ["rustls", "macros"], default-features = false }
 actix-web-httpauth = "0.8.0"
+argon2 = { version = "0.5.3", features = ["password-hash", "std"] }
 constant_time_eq = "0.2.5"
 fatfs = "0.3.6"
 fscommon = "0.1.1"
