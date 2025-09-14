@@ -1,6 +1,7 @@
 use std::fmt;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, BufReader, Write};
+use std::net::{Ipv6Addr, SocketAddr};
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
 
 use actix_web::{
@@ -440,6 +441,8 @@ async fn basic_auth_validator(
     match validate_credentials(
         credentials.user_id(),
         credentials.password().unwrap_or_default().trim().as_bytes(),
+        &req.peer_addr()
+            .unwrap_or(SocketAddr::new(Ipv6Addr::UNSPECIFIED.into(), 0)),
     ) {
         Ok(res) => {
             if res {
@@ -452,27 +455,31 @@ async fn basic_auth_validator(
     }
 }
 
-fn validate_credentials(user_id: &str, user_password: &[u8]) -> io::Result<bool> {
+fn validate_credentials(
+    user_id: &str,
+    user_password: &[u8],
+    peer_addr: &SocketAddr,
+) -> io::Result<bool> {
     if user_id != "rustkrazy" {
-        println!("bad user {}", user_id);
+        println!("{} bad user {}", peer_addr, user_id);
         return Ok(false);
     }
 
     match fs::read_to_string("/data/passwd.argon2id") {
-        Ok(phc) => verify_argon2id(user_password, &phc),
-        Err(e) if e.kind() == io::ErrorKind::NotFound => verify_plain(user_password),
+        Ok(phc) => verify_argon2id(user_password, &phc, peer_addr),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => verify_plain(user_password, peer_addr),
         Err(e) => {
-            println!("auth: read /data/passwd.argon2id: {}", e);
+            println!("{} auth: read /data/passwd.argon2id: {}", peer_addr, e);
             Err(e)
         }
     }
 }
 
-fn verify_argon2id(password: &[u8], phc: &str) -> io::Result<bool> {
+fn verify_argon2id(password: &[u8], phc: &str, peer_addr: &SocketAddr) -> io::Result<bool> {
     let parsed_hash = match PasswordHash::new(phc) {
         Ok(p) => p,
         Err(e) => {
-            println!("bad phc {}: {}", phc, e);
+            println!("{} bad phc {}: {}", peer_addr, phc, e);
             return Err(io::Error::other(e));
         }
     };
@@ -481,22 +488,30 @@ fn verify_argon2id(password: &[u8], phc: &str) -> io::Result<bool> {
         .verify_password(password, &parsed_hash)
         .is_ok();
 
-    println!("auth {} argon2id", if success { "ok" } else { "err" });
+    println!(
+        "{} auth {} argon2id",
+        peer_addr,
+        if success { "ok" } else { "err" }
+    );
     Ok(success)
 }
 
-fn verify_plain(password: &[u8]) -> io::Result<bool> {
+fn verify_plain(password: &[u8], peer_addr: &SocketAddr) -> io::Result<bool> {
     let correct_password = match fs::read("/data/admind.passwd") {
         Ok(p) => p,
         Err(e) => {
-            println!("auth: read /data/admind.passwd: {}", e);
+            println!("{} auth: read /data/admind.passwd: {}", peer_addr, e);
             return Err(e);
         }
     };
 
     let success = constant_time_eq(password, &correct_password);
 
-    println!("auth {} plain", if success { "ok" } else { "err" });
+    println!(
+        "{} auth {} plain",
+        peer_addr,
+        if success { "ok" } else { "err" }
+    );
     Ok(success)
 }
 
