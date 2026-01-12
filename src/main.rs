@@ -85,7 +85,7 @@ struct KillRequest {
 }
 
 async fn handle_reboot() -> HttpResponse {
-    println!("request reboot");
+    eprintln!("request reboot");
 
     if let Some(init) = System::new_all().process(Pid::from(1)) {
         init.kill_with(Signal::User1);
@@ -101,7 +101,7 @@ async fn handle_reboot() -> HttpResponse {
 }
 
 async fn handle_shutdown() -> HttpResponse {
-    println!("request shutdown");
+    eprintln!("request shutdown");
 
     if let Some(init) = System::new_all().process(Pid::from(1)) {
         init.kill_with(Signal::User2);
@@ -117,7 +117,7 @@ async fn handle_shutdown() -> HttpResponse {
 }
 
 async fn handle_update_boot(data: web::Bytes) -> HttpResponse {
-    println!("update boot");
+    eprintln!("update boot");
 
     let boot = match boot_dev() {
         Ok(v) => v,
@@ -139,7 +139,7 @@ async fn handle_update_boot(data: web::Bytes) -> HttpResponse {
 }
 
 async fn handle_update_mbr(data: web::Bytes) -> HttpResponse {
-    println!("update mbr");
+    eprintln!("update mbr");
 
     let mbr = match dev() {
         Ok(v) => v,
@@ -161,7 +161,7 @@ async fn handle_update_mbr(data: web::Bytes) -> HttpResponse {
 }
 
 async fn handle_update_root(data: web::Bytes) -> HttpResponse {
-    println!("update inactive root");
+    eprintln!("update inactive root");
 
     let root = match inactive_root() {
         Ok(v) => v,
@@ -183,7 +183,7 @@ async fn handle_update_root(data: web::Bytes) -> HttpResponse {
 }
 
 async fn handle_switch() -> HttpResponse {
-    println!("switch to inactive root");
+    eprintln!("switch to inactive root");
 
     match switch_to_inactive_root() {
         Ok(_) => HttpResponse::Ok()
@@ -198,7 +198,7 @@ async fn handle_switch() -> HttpResponse {
 async fn handle_data_read(info: web::Query<DataRequest>) -> HttpResponse {
     let query = info.into_inner();
 
-    println!("read {}", query.path);
+    eprintln!("read {}", query.path);
 
     match fs::read(&query.path) {
         Ok(data) => HttpResponse::Ok()
@@ -213,7 +213,7 @@ async fn handle_data_read(info: web::Query<DataRequest>) -> HttpResponse {
 async fn handle_data_write(info: web::Query<DataRequest>, data: web::Bytes) -> HttpResponse {
     let query = info.into_inner();
 
-    println!("write {}", query.path);
+    eprintln!("write {}", query.path);
 
     match stream_to(&query.path, &data).await {
         Ok(_) => HttpResponse::Ok()
@@ -228,7 +228,7 @@ async fn handle_data_write(info: web::Query<DataRequest>, data: web::Bytes) -> H
 async fn handle_data_list(info: web::Query<DataRequest>) -> HttpResponse {
     let query = info.into_inner();
 
-    println!("list {}", query.path);
+    eprintln!("list {}", query.path);
 
     match fs::read_dir(&query.path) {
         Ok(ls) => HttpResponse::Ok()
@@ -273,7 +273,7 @@ async fn handle_data_list(info: web::Query<DataRequest>) -> HttpResponse {
 async fn handle_data_mkdir(info: web::Query<DataRequest>) -> HttpResponse {
     let query = info.into_inner();
 
-    println!("mkdir {}", query.path);
+    eprintln!("mkdir {}", query.path);
 
     match fs::create_dir_all(&query.path) {
         Ok(_) => HttpResponse::Ok()
@@ -288,7 +288,7 @@ async fn handle_data_mkdir(info: web::Query<DataRequest>) -> HttpResponse {
 async fn handle_data_remove(info: web::Query<DataRequest>) -> HttpResponse {
     let query = info.into_inner();
 
-    println!("remove {}", query.path);
+    eprintln!("remove {}", query.path);
 
     match fs::remove_file(&query.path) {
         Ok(_) => HttpResponse::Ok()
@@ -303,7 +303,7 @@ async fn handle_data_remove(info: web::Query<DataRequest>) -> HttpResponse {
 async fn handle_data_removedir(info: web::Query<DataRequest>) -> HttpResponse {
     let query = info.into_inner();
 
-    println!("removedir {}", query.path);
+    eprintln!("removedir {}", query.path);
 
     match fs::remove_dir_all(&query.path) {
         Ok(_) => HttpResponse::Ok()
@@ -316,7 +316,7 @@ async fn handle_data_removedir(info: web::Query<DataRequest>) -> HttpResponse {
 }
 
 async fn handle_proc_top() -> HttpResponse {
-    println!("monitor processes");
+    eprintln!("monitor processes");
 
     let mut s = System::new_all();
 
@@ -356,7 +356,7 @@ async fn handle_proc_kill(info: web::Query<KillRequest>) -> HttpResponse {
         }
     };
 
-    println!("kill process {} signal {}", query.process, query.signal);
+    eprintln!("kill process {} signal {}", query.process, query.signal);
 
     for process in System::new_all().processes_by_exact_name(&query.process) {
         process.kill_with(signal);
@@ -372,7 +372,7 @@ async fn main() -> io::Result<()> {
     match start().await {
         Ok(_) => {}
         Err(e) => {
-            println!("start error: {}", e);
+            eprintln!("start error: {}", e);
             return Ok(());
         }
     }
@@ -383,7 +383,7 @@ async fn main() -> io::Result<()> {
 async fn start() -> Result<()> {
     let config = load_rustls_config()?;
 
-    println!("start https://[::]:8443");
+    eprintln!("start https://[::]:8443");
 
     Ok(HttpServer::new(|| {
         let auth = HttpAuthentication::basic(basic_auth_validator);
