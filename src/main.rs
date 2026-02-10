@@ -461,7 +461,7 @@ fn validate_credentials(
     peer_addr: &SocketAddr,
 ) -> io::Result<bool> {
     if user_id != "rustkrazy" {
-        println!("{} bad user {}", peer_addr, user_id);
+        eprintln!("{} bad user {}", peer_addr, user_id);
         return Ok(false);
     }
 
@@ -469,7 +469,7 @@ fn validate_credentials(
         Ok(phc) => verify_argon2id(user_password, &phc, peer_addr),
         Err(e) if e.kind() == io::ErrorKind::NotFound => verify_plain(user_password, peer_addr),
         Err(e) => {
-            println!("{} auth: read /data/passwd.argon2id: {}", peer_addr, e);
+            eprintln!("{} auth: read /data/passwd.argon2id: {}", peer_addr, e);
             Err(e)
         }
     }
@@ -479,7 +479,7 @@ fn verify_argon2id(password: &[u8], phc: &str, peer_addr: &SocketAddr) -> io::Re
     let parsed_hash = match PasswordHash::new(phc) {
         Ok(p) => p,
         Err(e) => {
-            println!("{} bad phc {}: {}", peer_addr, phc, e);
+            eprintln!("{} bad phc {}: {}", peer_addr, phc, e);
             return Err(io::Error::other(e));
         }
     };
@@ -488,7 +488,7 @@ fn verify_argon2id(password: &[u8], phc: &str, peer_addr: &SocketAddr) -> io::Re
         .verify_password(password, &parsed_hash)
         .is_ok();
 
-    println!(
+    eprintln!(
         "{} auth {} argon2id",
         peer_addr,
         if success { "ok" } else { "err" }
@@ -500,14 +500,14 @@ fn verify_plain(password: &[u8], peer_addr: &SocketAddr) -> io::Result<bool> {
     let correct_password = match fs::read("/data/admind.passwd") {
         Ok(p) => p,
         Err(e) => {
-            println!("{} auth: read /data/admind.passwd: {}", peer_addr, e);
+            eprintln!("{} auth: read /data/admind.passwd: {}", peer_addr, e);
             return Err(e);
         }
     };
 
     let success = constant_time_eq(password, &correct_password);
 
-    println!(
+    eprintln!(
         "{} auth {} plain",
         peer_addr,
         if success { "ok" } else { "err" }
